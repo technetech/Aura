@@ -1,0 +1,46 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Client {
+  id                 String   @id @default(cuid())
+  url                String   @unique
+  name               String?
+  location           String?  // País/ciudad/región
+  industry           String?  // Industria/categoría
+  products           String?  // Productos/servicios
+  targetCustomer     String?  // Cliente objetivo
+  knownCompetitors   String?  // Competidores conocidos
+  socialMedia        String?  // Redes sociales
+  businessObjectives String?  // Objetivos de negocio
+  
+  // Archivos/Assets (Guardaremos URLs o paths por ahora)
+  logoUrl            String?
+  manualUrl          String?
+  docsUrl            String?
+  firstPartyDataUrl  String?
+
+  companyProfile     String?  // Perfil generado por IA
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  
+  brandCore          BrandCore?
+}
+
+model BrandCore {
+  id          String   @id @default(cuid())
+  purpose     String?
+  mission     String?
+  vision      String?
+  values      String?
+  personality String?
+  positioning String?
+  clientId    String   @unique
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+}
