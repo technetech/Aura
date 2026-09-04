@@ -79,3 +79,17 @@ export async function getClientById(id: string) {
     }
   });
 }
+
+export async function deleteClient(id: string) {
+  try {
+    await prisma.client.delete({
+      where: { id },
+    });
+    revalidatePath("/clients");
+    revalidatePath("/");
+    return { success: true };
+  } catch (error) {
+    console.error("Error al eliminar cliente:", error);
+    return { success: false, error: "Error al eliminar" };
+  }
+}

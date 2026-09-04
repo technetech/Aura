@@ -26,6 +26,10 @@ model Client {
   firstPartyDataUrl  String?
 
   companyProfile     String?  // Perfil generado por IA
+  
+  competitorAnalysis String?  // JSON string
+  marketAnalysis     String?  // JSON string
+  customerAnalysis   String?  // JSON string
 
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt

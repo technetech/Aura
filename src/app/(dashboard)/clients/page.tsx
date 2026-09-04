@@ -55,9 +55,20 @@ export default async function ClientsPage() {
                     {new Date(client.createdAt).toLocaleDateString('es-ES')}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <Link href={`/clients/${client.id}/intelligence`} className="text-[#3B5B7E] hover:text-[#2C4A6B]">
-                      Ver Client Brain
-                    </Link>
+                    <div className="flex items-center justify-end space-x-4">
+                      <Link href={`/clients/${client.id}/intelligence`} className="text-[#3B5B7E] hover:text-[#2C4A6B]">
+                        Ver Client Brain
+                      </Link>
+                      <form action={async () => {
+                        "use server";
+                        const { deleteClient } = await import("@/actions/client");
+                        await deleteClient(client.id);
+                      }}>
+                        <button type="submit" className="text-red-500 hover:text-red-700 text-xs">
+                          Borrar
+                        </button>
+                      </form>
+                    </div>
                   </td>
                 </tr>
               ))}

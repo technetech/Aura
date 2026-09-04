@@ -11,7 +11,7 @@ const mainNavigation = [
   { name: "Clientes", href: "/clients", icon: Users },
 ];
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
+export default function AppLayout({ children, clients = [] }: { children: React.ReactNode, clients?: any[] }) {
   const pathname = usePathname();
 
   return (
@@ -29,7 +29,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
           <ul className="space-y-1 px-3">
             {mainNavigation.map((item) => {
-              // Highlight if it's exact match or if we are inside a client and it's the "Clientes" tab
               const isActive = 
                 item.href === '/clients' 
                   ? pathname === '/clients' || (pathname.startsWith('/clients/') && pathname !== '/clients/new')
@@ -48,6 +47,29 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     <item.icon className="mr-3 h-5 w-5 flex-shrink-0" aria-hidden="true" />
                     {item.name}
                   </Link>
+                  
+                  {/* Si es Clientes, renderizar la lista debajo (Accordion) */}
+                  {item.name === "Clientes" && (
+                    <ul className="mt-1 space-y-1 pl-10 border-l border-gray-800 ml-5">
+                      {clients.map((client) => {
+                        const isClientActive = pathname.startsWith(`/clients/${client.id}`);
+                        return (
+                          <li key={client.id}>
+                            <Link
+                              href={`/clients/${client.id}/intelligence`}
+                              className={`block px-2 py-1.5 text-xs rounded-md transition-colors ${
+                                isClientActive 
+                                  ? "bg-gray-800 text-white font-medium" 
+                                  : "text-gray-400 hover:text-white hover:bg-gray-800"
+                              }`}
+                            >
+                              {client.name || client.url}
+                            </Link>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
                 </li>
               );
             })}
