@@ -10,6 +10,12 @@ export default async function AuraOverviewPage({ params }: { params: Promise<{ i
   if (!client) notFound();
 
   const hasBrandCore = !!client.brandCore;
+  let brandCoreData: any = {};
+  if (hasBrandCore) {
+    try {
+      brandCoreData = JSON.parse(client.brandCore as string);
+    } catch (e) {}
+  }
 
   return (
     <div className="space-y-8">
@@ -34,17 +40,17 @@ export default async function AuraOverviewPage({ params }: { params: Promise<{ i
             <div className="lg:col-span-2 space-y-6">
               <div>
                 <dt className="text-sm font-medium text-gray-500 uppercase tracking-wide">Propósito (Purpose)</dt>
-                <dd className="mt-2 text-lg text-gray-900 font-serif italic">"{client.brandCore.purpose}"</dd>
+                <dd className="mt-2 text-lg text-gray-900 font-serif italic">"{brandCoreData?.purpose}"</dd>
               </div>
               <div>
                 <dt className="text-sm font-medium text-gray-500 uppercase tracking-wide">Promesa de Marca / Posicionamiento</dt>
-                <dd className="mt-2 text-base text-gray-900">{client.brandCore.positioning}</dd>
+                <dd className="mt-2 text-base text-gray-900">{brandCoreData?.positioning}</dd>
               </div>
               <div>
                 <dt className="text-sm font-medium text-gray-500 uppercase tracking-wide">Misión y Visión</dt>
                 <dd className="mt-2 text-sm text-gray-700 space-y-2">
-                  <p><strong>Misión:</strong> {client.brandCore.mission}</p>
-                  <p><strong>Visión:</strong> {client.brandCore.vision}</p>
+                  <p><strong>Misión:</strong> {brandCoreData?.mission}</p>
+                  <p><strong>Visión:</strong> {brandCoreData?.vision}</p>
                 </dd>
               </div>
             </div>
@@ -53,11 +59,11 @@ export default async function AuraOverviewPage({ params }: { params: Promise<{ i
                <div className="space-y-4">
                  <div>
                    <h4 className="text-xs font-bold text-gray-700 mb-1">Personalidad</h4>
-                   <p className="text-sm text-gray-600">{client.brandCore.personality}</p>
+                   <p className="text-sm text-gray-600">{brandCoreData?.personality}</p>
                  </div>
                  <div>
                    <h4 className="text-xs font-bold text-gray-700 mb-1">Valores Base</h4>
-                   <p className="text-sm text-gray-600 capitalize">{client.brandCore.values}</p>
+                   <p className="text-sm text-gray-600 capitalize">{brandCoreData?.values}</p>
                  </div>
                </div>
             </div>
