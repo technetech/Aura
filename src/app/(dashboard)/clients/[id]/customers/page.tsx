@@ -3,27 +3,23 @@ import { getClientById } from "@/actions/client";
 import { notFound } from "next/navigation";
 import DataPlaceholder from "@/components/DataPlaceholder";
 import CustomerAnalyzeButton from "@/components/CustomerAnalyzeButton";
+import { VoiceOfCustomer } from "@/types/intelligence";
 
 export default async function CustomersPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const client = await getClientById(id);
   if (!client) notFound();
 
-  let data = null;
-  if (client.customerAnalysis) {
-    try {
-      data = JSON.parse(client.customerAnalysis);
-    } catch (e) {
-      console.error(e);
-    }
-  }
+  // Buscar el insight de Voice of Customer
+  const vocInsight = client.insights?.find((i: any) => i.framework === 'voc_clusters');
+  const data = vocInsight ? (vocInsight.payload as unknown as VoiceOfCustomer) : null;
 
   return (
     <div className="space-y-8">
       <div className="flex justify-between items-end border-b border-gray-200 pb-4">
         <div>
-          <h1 className="text-3xl font-serif font-light text-gray-900">Customer Intelligence</h1>
-          <p className="text-gray-500 font-light mt-1">Voz del cliente, quejas comunes y motivadores de compra.</p>
+          <h1 className="text-3xl font-serif font-light text-gray-900">Voice of Customer</h1>
+          <p className="text-gray-500 font-light mt-1">Clustering temático y necesidades no cubiertas (JTBD).</p>
         </div>
         <CustomerAnalyzeButton clientId={client.id} />
       </div>
@@ -31,48 +27,34 @@ export default async function CustomersPage({ params }: { params: Promise<{ id: 
       <div className="grid grid-cols-1 gap-6">
         {data ? (
           <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Pain Points & Quejas de la Industria</h3>
-            <ul className="list-disc pl-5 space-y-2 text-gray-700">
-              {data.painPoints?.map((p: string, i: number) => <li key={i}>{p}</li>)}
-            </ul>
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Clusters de Necesidades (JTBD)</h3>
+            <div className="space-y-6">
+              {data.clusters.map((cluster, i) => (
+                <div key={i} className="border-l-4 border-[#3B5B7E] pl-4 py-2">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-bold text-gray-900">{cluster.nombre}</h4>
+                    <span className="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded font-mono">
+                      Frecuencia: {cluster.frecuencia_pct}%
+                    </span>
+                  </div>
+                  <p className="mt-2 text-sm text-gray-700"><strong>Oportunidad:</strong> {cluster.oportunidad}</p>
+                  <p className="mt-1 text-xs text-gray-500">Atendido por: <span className="font-medium">{cluster.atendido_por}</span></p>
+                </div>
+              ))}
+            </div>
+            {vocInsight?.narrative && (
+              <div className="mt-6 pt-4 border-t border-gray-100 text-sm text-gray-600">
+                <strong>Resumen del Analista:</strong> {vocInsight.narrative}
+              </div>
+            )}
           </div>
         ) : (
           <DataPlaceholder 
-            title="Pain Points & Quejas de la Industria"
-            expectedData={["Lista de frustraciones", "Citas literales de reseñas", "Oportunidades"]}
-            apiSource="Apify (Capterra/Google Scraper) + Nvidia NIM"
+            title="Voice of Customer (Clustering)"
+            expectedData={["Agrupación de reviews y comentarios", "Análisis JTBD (Jobs-to-be-Done)", "Oportunidades de producto/mensaje"]}
+            apiSource="Apify (Reviews Scraper) + Nvidia NIM"
           />
         )}
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {data ? (
-            <>
-              <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden p-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Purchase Drivers (Motivadores)</h3>
-                <ul className="list-disc pl-5 space-y-2 text-gray-700">
-                  {data.purchaseDrivers?.map((p: string, i: number) => <li key={i}>{p}</li>)}
-                </ul>
-              </div>
-              <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden p-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Arquetipo del Comprador</h3>
-                <p className="text-gray-700 whitespace-pre-wrap">{data.buyerPersona}</p>
-              </div>
-            </>
-          ) : (
-            <>
-              <DataPlaceholder 
-                title="Purchase Drivers (Motivadores)"
-                expectedData={["Razones de compra", "Características valoradas"]}
-                apiSource="Apify (Scraper de Reseñas)"
-              />
-              <DataPlaceholder 
-                title="Arquetipo del Comprador (Buyer Persona)"
-                expectedData={["Perfil demográfico", "Miedos y deseos"]}
-                apiSource="Nvidia NIM"
-              />
-            </>
-          )}
-        </div>
       </div>
     </div>
   );

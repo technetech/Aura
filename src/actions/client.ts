@@ -76,6 +76,8 @@ export async function getClientById(id: string) {
     where: { id },
     include: {
       brandCore: true,
+      insights: true,
+      competitors: true,
     }
   });
 }
