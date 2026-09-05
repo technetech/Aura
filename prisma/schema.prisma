@@ -3,48 +3,119 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
-model Client {
-  id                 String   @id @default(cuid())
-  url                String   @unique
-  name               String?
+model Account {
+  id                 String   @id @default(uuid()) @db.Uuid
+  companyName        String?
+  websiteUrl         String   @unique
+  socialProfiles     Json?    // {instagram: url, linkedin: url, x: url, ...}
+  onboardingAnswers  Json?    // Respuestas al cuestionario inicial
+  industry           String?
+  
+  // Campos heredados de tu estructura anterior que pueden ser útiles
   location           String?  // País/ciudad/región
-  industry           String?  // Industria/categoría
   products           String?  // Productos/servicios
   targetCustomer     String?  // Cliente objetivo
-  knownCompetitors   String?  // Competidores conocidos
-  socialMedia        String?  // Redes sociales
   businessObjectives String?  // Objetivos de negocio
-  
-  // Archivos/Assets (Guardaremos URLs o paths por ahora)
   logoUrl            String?
   manualUrl          String?
   docsUrl            String?
   firstPartyDataUrl  String?
 
-  companyProfile     String?  // Perfil generado por IA
-  
-  competitorAnalysis String?  // JSON string
-  marketAnalysis     String?  // JSON string
-  customerAnalysis   String?  // JSON string
-
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
   
+  // Relaciones
   brandCore          BrandCore?
+  competitors        Competitor[]
+  rawSnapshots       RawSnapshot[]
+  deltas             Delta[]
+  insights           Insight[]
 }
 
 model BrandCore {
-  id          String   @id @default(cuid())
+  id          String   @id @default(uuid()) @db.Uuid
   purpose     String?
   mission     String?
   vision      String?
   values      String?
   personality String?
   positioning String?
-  clientId    String   @unique
-  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  accountId   String   @unique @db.Uuid
+  account     Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+}
+
+model Competitor {
+  id             String   @id @default(uuid()) @db.Uuid
+  accountId      String   @db.Uuid
+  account        Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  name           String
+  websiteUrl     String?
+  socialProfiles Json?
+  source         String   // 'user_provided' | 'discovered_google_search'
+  status         String   @default("active") // 'active' | 'archived'
+  discoveredAt   DateTime @default(now())
+}
+
+model RawSnapshot {
+  id           String   @id @default(uuid()) @db.Uuid
+  accountId    String   @db.Uuid
+  account      Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  
+  entityId     String   @db.Uuid // UUID de competitor_id, o account_id si es sobre sí mismo
+  entityType   String   // 'own_company' | 'competitor'
+  sourceApi    String   // 'google_search' | 'jina_reader' | 'firecrawl' | 'apify'
+  dataCategory String   // 'pricing' | 'homepage_copy' | 'blog' | 'reviews' | 'social_post' | 'job_posting' | 'ads' | 'press' | 'serp'
+  rawPayload   Json     // Respuesta cruda de la API
+  contentHash  String   // Hash del contenido relevante para detectar cambios rápido
+  fetchedAt    DateTime @default(now())
+
+  // Relaciones inversas para los Deltas
+  deltasAsPrev Delta[] @relation("PrevSnapshot")
+  deltasAsCurr Delta[] @relation("CurrSnapshot")
+
+  @@index([entityId, entityType])
+  @@index([contentHash])
+}
+
+model Delta {
+  id                String   @id @default(uuid()) @db.Uuid
+  accountId         String   @db.Uuid
+  account           Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  entityId          String   @db.Uuid
+  dataCategory      String
+  
+  prevSnapshotId    String?  @db.Uuid
+  prevSnapshot      RawSnapshot? @relation("PrevSnapshot", fields: [prevSnapshotId], references: [id])
+  
+  currSnapshotId    String   @db.Uuid
+  currSnapshot      RawSnapshot  @relation("CurrSnapshot", fields: [currSnapshotId], references: [id])
+
+  changeType        String   // 'price_change' | 'new_content' | 'copy_change' | 'new_job_posting' | 'new_ad' | 'sentiment_shift' | 'removed'
+  changeSummary     String   // Resumen generado por LLM
+  significanceScore Float    // 0-1, qué tan relevante es (LLM o heurística)
+  detectedAt        DateTime @default(now())
+}
+
+model Insight {
+  id           String   @id @default(uuid()) @db.Uuid
+  accountId    String   @db.Uuid
+  account      Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  framework    String   // 'battlecard' | 'positioning_map' | 'sov_composite' | 'sentiment_trend' | 'momentum_score' | 'voc_clusters'
+  scope        String   // competitor_id específico, o 'market_wide'
+  periodStart  DateTime
+  periodEnd    DateTime
+  payload      Json     // Estructura específica del framework
+  narrative    String   // Resumen en lenguaje natural
+  generatedAt  DateTime @default(now())
+}
+
+model RefreshSchedule {
+  dataCategory     String @id
+  refreshFrequency String // 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'quarterly'
+  apiUsed          String
+  priority         Int    // Orden de ejecución dentro del pipeline
 }
