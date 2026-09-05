@@ -9,7 +9,10 @@ export default function AnalyzeButton({ clientId }: { clientId: string }) {
 
   const handleAnalyze = () => {
     startTransition(async () => {
-      await generateCompanyProfile(clientId);
+      const result = await generateCompanyProfile(clientId);
+      if (result && !result.success) {
+        alert("Error de Análisis: " + result.error);
+      }
     });
   };
 

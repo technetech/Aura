@@ -31,26 +31,60 @@ Información base:
 - Industria: ${client.industry || "No especificada"}
 - Cliente Objetivo: ${client.targetCustomer || "No especificado"}
 
-CONTENIDO EXTRAÍDO DE SU SITIO WEB (Markdown):
+CONTENIDO EXTRAÍDO DE SU SITIO WEB:
 """
-${websiteData ? websiteData : "No se pudo extraer contenido del sitio."}
+${websiteData ? websiteData.substring(0, 5000) : "No se pudo extraer contenido del sitio."}
 """
 
-Basado EXCLUSIVAMENTE en el contenido de su sitio web y la información base, redacta un perfil estructurado de la empresa en Markdown que incluya:
-1. **Descripción General:** Qué hace realmente la empresa según su web.
-2. **Propuesta de Valor Principal:** Cuál es el beneficio central que prometen.
-3. **Claims / Promesas detectadas:** Lista las 3 promesas más fuertes que hacen en su copy.
-4. **CTAs Principales:** Qué llamados a la acción usan para captar leads.
+Genera un Battlecard en formato JSON ESTRICTO sobre esta empresa. El JSON debe tener esta estructura exacta, y NADA MÁS:
+{
+  "resumen_ejecutivo": "string",
+  "fortalezas": ["string"],
+  "debilidades": ["string"],
+  "pricing_actual": {
+    "detalle": "string",
+    "cambio_vs_periodo_anterior": "string"
+  },
+  "mensaje_central_marketing": "string",
+  "movimientos_recientes": ["string"],
+  "como_competir": ["string"]
+}
 
-Formato: Solo responde con el Markdown limpio.`;
+IMPORTANTE: Responde ÚNICAMENTE con el objeto JSON válido. No uses bloques de código (ni \`\`\`json). Solo el { ... }.`;
 
-    // Llamada real al LLM (Nvidia NIM - moonshotai/kimi-k3)
-    const profileMarkdown = await generateInsights(prompt, false);
+    // Llamada real al LLM
+    const responseString = await generateInsights(prompt, false);
+    
+    // Limpieza agresiva por si el LLM devuelve markdown tags
+    let cleanJson = responseString.replace(/```json/gi, "").replace(/```/g, "").trim();
+    if (cleanJson.startsWith("`")) cleanJson = cleanJson.substring(1);
+    if (cleanJson.endsWith("`")) cleanJson = cleanJson.substring(0, cleanJson.length - 1);
 
-    // Guardamos el resultado en el campo companyProfile
+    let parsedData;
+    try {
+      parsedData = JSON.parse(cleanJson);
+    } catch (parseError: any) {
+      console.error("Error parseando JSON de Nvidia:", cleanJson);
+      return { success: false, error: "La IA no devolvió un JSON válido. Reintenta." };
+    }
+
+    // Guardamos el resultado en la nueva tabla Insights
+    await prisma.insight.create({
+      data: {
+        accountId: clientId,
+        framework: 'battlecard',
+        scope: 'own_company',
+        periodStart: new Date(),
+        periodEnd: new Date(),
+        payload: parsedData,
+        narrative: parsedData.resumen_ejecutivo || "Análisis base completado."
+      }
+    });
+    
+    // También actualizamos el campo viejo por si acaso
     await prisma.account.update({
       where: { id: clientId },
-      data: { companyProfile: profileMarkdown },
+      data: { companyProfile: parsedData.resumen_ejecutivo },
     });
 
     revalidatePath(`/clients/${clientId}/intelligence`);
