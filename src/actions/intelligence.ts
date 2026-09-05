@@ -36,21 +36,22 @@ CONTENIDO EXTRAÍDO DE SU SITIO WEB:
 ${websiteData ? websiteData.substring(0, 5000) : "No se pudo extraer contenido del sitio."}
 """
 
-Genera un Battlecard en formato JSON ESTRICTO sobre esta empresa. El JSON debe tener esta estructura exacta, y NADA MÁS:
+Genera un Battlecard en formato JSON ESTRICTO sobre esta empresa. El JSON debe tener esta estructura exacta, y NADA MÁS. Asegúrate de cerrar bien las llaves y corchetes:
+
 {
-  "resumen_ejecutivo": "string",
-  "fortalezas": ["string"],
-  "debilidades": ["string"],
+  "resumen_ejecutivo": "Texto breve",
+  "fortalezas": ["Punto 1", "Punto 2"],
+  "debilidades": ["Punto 1", "Punto 2"],
   "pricing_actual": {
-    "detalle": "string",
-    "cambio_vs_periodo_anterior": "string"
+    "detalle": "Explicación",
+    "cambio_vs_periodo_anterior": "Explicación"
   },
-  "mensaje_central_marketing": "string",
-  "movimientos_recientes": ["string"],
-  "como_competir": ["string"]
+  "mensaje_central_marketing": "Texto",
+  "movimientos_recientes": ["Movimiento 1", "Movimiento 2"],
+  "como_competir": ["Estrategia 1", "Estrategia 2"]
 }
 
-IMPORTANTE: Responde ÚNICAMENTE con el objeto JSON válido. No uses bloques de código (ni \`\`\`json). Solo el { ... }.`;
+IMPORTANTE: Responde ÚNICAMENTE con el objeto JSON válido. No uses bloques de código (ni \`\`\`json). Solo el { ... }. Todo debe estar correctamente formateado en JSON.`;
 
     // Llamada real al LLM
     const responseString = await generateInsights(prompt, false);

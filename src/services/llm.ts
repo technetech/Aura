@@ -39,7 +39,7 @@ export async function generateInsights(prompt: string, useMock = false) {
           { role: "user", content: prompt }
         ],
         temperature: 0.2,
-        max_tokens: 1024,
+        max_tokens: 4096,
       }),
     });
 
