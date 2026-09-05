@@ -9,8 +9,8 @@ datasource db {
 
 model Account {
   id                 String   @id @default(uuid()) @db.Uuid
-  companyName        String?
-  websiteUrl         String   @unique
+  name               String?
+  url                String   @unique
   socialProfiles     Json?    // {instagram: url, linkedin: url, x: url, ...}
   onboardingAnswers  Json?    // Respuestas al cuestionario inicial
   industry           String?
@@ -19,11 +19,18 @@ model Account {
   location           String?  // País/ciudad/región
   products           String?  // Productos/servicios
   targetCustomer     String?  // Cliente objetivo
+  knownCompetitors   String?  // Competidores conocidos
+  socialMedia        String?  // Redes sociales
   businessObjectives String?  // Objetivos de negocio
   logoUrl            String?
   manualUrl          String?
   docsUrl            String?
   firstPartyDataUrl  String?
+
+  companyProfile     String?
+  competitorAnalysis String?
+  marketAnalysis     String?
+  customerAnalysis   String?
 
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
