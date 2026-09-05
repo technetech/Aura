@@ -9,7 +9,7 @@ const prisma = new PrismaClient();
 
 export async function generateCompanyProfile(clientId: string) {
   try {
-    const client = await prisma.client.findUnique({
+    const client = await prisma.account.findUnique({
       where: { id: clientId },
     });
 
@@ -48,7 +48,7 @@ Formato: Solo responde con el Markdown limpio.`;
     const profileMarkdown = await generateInsights(prompt, false);
 
     // Guardamos el resultado en el campo companyProfile
-    await prisma.client.update({
+    await prisma.account.update({
       where: { id: clientId },
       data: { companyProfile: profileMarkdown },
     });
@@ -64,7 +64,7 @@ Formato: Solo responde con el Markdown limpio.`;
 
 export async function generateBrandCore(clientId: string) {
   try {
-    const client = await prisma.client.findUnique({
+    const client = await prisma.account.findUnique({
       where: { id: clientId },
     });
 
@@ -107,7 +107,7 @@ Formato estricto:
     const data = JSON.parse(cleanJsonString);
 
     await prisma.brandCore.upsert({
-      where: { clientId: client.id },
+      where: { accountId: client.id },
       update: {
         purpose: data.purpose,
         mission: data.mission,
@@ -117,7 +117,7 @@ Formato estricto:
         positioning: data.positioning,
       },
       create: {
-        clientId: client.id,
+        accountId: client.id,
         purpose: data.purpose,
         mission: data.mission,
         vision: data.vision,
@@ -137,7 +137,7 @@ Formato estricto:
 
 export async function generateCustomerIntelligence(clientId: string) {
   try {
-    const client = await prisma.client.findUnique({ where: { id: clientId } });
+    const client = await prisma.account.findUnique({ where: { id: clientId } });
     if (!client) return { success: false, error: "No encontrado" };
 
     // Simulación de llamada a Apify (o extracción real si tuviéramos un Actor ID específico de G2)
@@ -157,7 +157,7 @@ Genera un análisis profundo de los clientes de esta industria. Devuelve un JSON
     let jsonString = await generateInsights(prompt, false);
     jsonString = jsonString.replace(/```json/g, '').replace(/```/g, '').trim();
 
-    await prisma.client.update({
+    await prisma.account.update({
       where: { id: clientId },
       data: { customerAnalysis: jsonString }
     });
@@ -172,7 +172,7 @@ Genera un análisis profundo de los clientes de esta industria. Devuelve un JSON
 
 export async function generateCompetitorIntelligence(clientId: string) {
   try {
-    const client = await prisma.client.findUnique({ where: { id: clientId } });
+    const client = await prisma.account.findUnique({ where: { id: clientId } });
     if (!client) return { success: false, error: "Cliente no encontrado" };
 
     // Extraer web principal si existe para comparar
@@ -198,7 +198,7 @@ Genera inteligencia competitiva. Devuelve un JSON VÁLIDO:
     let jsonString = await generateInsights(prompt, false);
     jsonString = jsonString.replace(/```json/g, '').replace(/```/g, '').trim();
 
-    await prisma.client.update({
+    await prisma.account.update({
       where: { id: clientId },
       data: { competitorAnalysis: jsonString }
     });
@@ -213,7 +213,7 @@ Genera inteligencia competitiva. Devuelve un JSON VÁLIDO:
 
 export async function generateMarketIntelligence(clientId: string) {
   try {
-    const client = await prisma.client.findUnique({ where: { id: clientId } });
+    const client = await prisma.account.findUnique({ where: { id: clientId } });
     if (!client) return { success: false, error: "Cliente no encontrado" };
 
     const prompt = `Actúa como Analista de Mercado.
@@ -229,7 +229,7 @@ Calcula métricas de mercado. Devuelve un JSON VÁLIDO:
     let jsonString = await generateInsights(prompt, false);
     jsonString = jsonString.replace(/```json/g, '').replace(/```/g, '').trim();
 
-    await prisma.client.update({
+    await prisma.account.update({
       where: { id: clientId },
       data: { marketAnalysis: jsonString }
     });

@@ -23,7 +23,7 @@ export async function createClient(formData: FormData) {
       return { success: false, error: "La URL es requerida" };
     }
 
-    const existingClient = await prisma.client.findUnique({
+    const existingClient = await prisma.account.findUnique({
       where: { url },
     });
 
@@ -36,7 +36,7 @@ export async function createClient(formData: FormData) {
     const manualUrl = await saveFile(formData.get("manualFile") as File);
     const docsUrl = await saveFile(formData.get("docsFile") as File);
 
-    const client = await prisma.client.create({
+    const client = await prisma.account.create({
       data: {
         url,
         name: (formData.get("name") as string) || null,
@@ -66,13 +66,13 @@ export async function createClient(formData: FormData) {
 }
 
 export async function getClients() {
-  return prisma.client.findMany({
+  return prisma.account.findMany({
     orderBy: { createdAt: "desc" },
   });
 }
 
 export async function getClientById(id: string) {
-  return prisma.client.findUnique({
+  return prisma.account.findUnique({
     where: { id },
     include: {
       brandCore: true,
@@ -82,7 +82,7 @@ export async function getClientById(id: string) {
 
 export async function deleteClient(id: string) {
   try {
-    await prisma.client.delete({
+    await prisma.account.delete({
       where: { id },
     });
     revalidatePath("/clients");
