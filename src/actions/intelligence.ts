@@ -175,26 +175,52 @@ export async function generateCustomerIntelligence(clientId: string) {
     const client = await prisma.account.findUnique({ where: { id: clientId } });
     if (!client) return { success: false, error: "No encontrado" };
 
-    // Simulación de llamada a Apify (o extracción real si tuviéramos un Actor ID específico de G2)
-    // Para MVP, pasamos la industria y los competidores conocidos a Nvidia para extraer insights de usuario
     const prompt = `Actúa como Analista de Voz del Cliente (CX).
-Industria: ${client.industry}
-Target: ${client.targetCustomer}
-Competidores: ${client.knownCompetitors}
+Industria: ${client.industry || "No especificada"}
+Target: ${client.targetCustomer || "No especificado"}
+Competidores: ${client.knownCompetitors || "Ninguno"}
 
-Genera un análisis profundo de los clientes de esta industria. Devuelve un JSON VÁLIDO con esta estructura:
+Genera un análisis profundo de los clientes de esta industria basado en Voice of Customer (VoC) y Jobs-To-Be-Done (JTBD).
+Devuelve un JSON ESTRICTO con esta estructura exacta y NADA MÁS. Asegúrate de cerrar bien las llaves y corchetes:
+
 {
-  "painPoints": ["Punto de dolor 1 (largo)", "Punto 2", "Punto 3"],
-  "purchaseDrivers": ["Motivador 1", "Motivador 2", "Motivador 3"],
-  "buyerPersona": "Descripción profunda de quién es el comprador ideal, sus miedos y deseos"
-}`;
+  "clusters": [
+    {
+      "nombre": "Nombre del segmento o necesidad (ej. Integración Rápida)",
+      "frecuencia_pct": 40,
+      "atendido_por": "nadie | nosotros | nombre_competidor | todos",
+      "oportunidad": "Cómo podemos capitalizar esta necesidad"
+    }
+  ]
+}
+
+IMPORTANTE: Responde ÚNICAMENTE con el objeto JSON válido. No uses bloques de código (ni \`\`\`json).`;
 
     let jsonString = await generateInsights(prompt, false);
-    jsonString = jsonString.replace(/```json/g, '').replace(/```/g, '').trim();
+    
+    // Limpieza agresiva
+    let cleanJson = jsonString.replace(/```json/gi, "").replace(/```/g, "").trim();
+    if (cleanJson.startsWith("`")) cleanJson = cleanJson.substring(1);
+    if (cleanJson.endsWith("`")) cleanJson = cleanJson.substring(0, cleanJson.length - 1);
 
-    await prisma.account.update({
-      where: { id: clientId },
-      data: { customerAnalysis: jsonString }
+    let parsedData;
+    try {
+      parsedData = JSON.parse(cleanJson);
+    } catch (e) {
+      console.error("Error parseando JSON de Customer:", cleanJson);
+      return { success: false, error: "La IA no devolvió un JSON válido. Reintenta." };
+    }
+
+    await prisma.insight.create({
+      data: {
+        accountId: clientId,
+        framework: 'voc_clusters',
+        scope: 'market_wide',
+        periodStart: new Date(),
+        periodEnd: new Date(),
+        payload: parsedData,
+        narrative: "Análisis de clustering generado a partir de segmentación de mercado."
+      }
     });
 
     revalidatePath(`/clients/${clientId}/customers`);
@@ -210,33 +236,82 @@ export async function generateCompetitorIntelligence(clientId: string) {
     const client = await prisma.account.findUnique({ where: { id: clientId } });
     if (!client) return { success: false, error: "Cliente no encontrado" };
 
-    // Extraer web principal si existe para comparar
     let web = "";
     if (client.url) web = await scrapeWithJina(client.url);
 
     const prompt = `Actúa como Analista de Competencia.
 Nuestro Cliente: ${client.name} (${client.industry})
 Competidores detectados: ${client.knownCompetitors}
-Web del cliente: ${web ? web.substring(0, 1000) : 'N/A'}
+Web del cliente: ${web ? web.substring(0, 3000) : 'N/A'}
 
-Genera inteligencia competitiva. Devuelve un JSON VÁLIDO:
+Genera un Mapa de Posicionamiento (Positioning Map 2x2) evaluando al cliente y sus competidores.
+Devuelve un JSON ESTRICTO con esta estructura exacta y NADA MÁS. Asegúrate de cerrar bien las llaves y corchetes:
+
 {
-  "topCompetitors": [
-    {"name": "Comp 1", "overlap": 75, "type": "Directo"},
-    {"name": "Comp 2", "overlap": 45, "type": "Indirecto"}
+  "eje_x": { "nombre": "Precio / Valor", "min_label": "Económico", "max_label": "Premium" },
+  "eje_y": { "nombre": "Funcionalidad", "min_label": "Básica", "max_label": "Completa" },
+  "posiciones": [
+    { "empresa": "${client.name || 'El Cliente'}", "x": 5, "y": 7, "justificacion": "Por qué se ubica aquí" }
   ],
-  "priceModels": ["Modelo 1", "Modelo 2"],
-  "gaps": ["Brecha 1", "Brecha 2"],
-  "threats": ["Amenaza 1", "Amenaza 2"]
-}`;
+  "espacios_vacios": ["Oportunidad 1", "Oportunidad 2"]
+}
+
+IMPORTANTE: Responde ÚNICAMENTE con el objeto JSON válido. No uses bloques de código (ni \`\`\`json).`;
 
     let jsonString = await generateInsights(prompt, false);
-    jsonString = jsonString.replace(/```json/g, '').replace(/```/g, '').trim();
+    
+    // Limpieza agresiva
+    let cleanJson = jsonString.replace(/```json/gi, "").replace(/```/g, "").trim();
+    if (cleanJson.startsWith("`")) cleanJson = cleanJson.substring(1);
+    if (cleanJson.endsWith("`")) cleanJson = cleanJson.substring(0, cleanJson.length - 1);
 
-    await prisma.account.update({
-      where: { id: clientId },
-      data: { competitorAnalysis: jsonString }
+    let parsedData;
+    try {
+      parsedData = JSON.parse(cleanJson);
+    } catch (e) {
+      console.error("Error parseando JSON de Competitors:", cleanJson);
+      return { success: false, error: "La IA no devolvió un JSON válido. Reintenta." };
+    }
+
+    await prisma.insight.create({
+      data: {
+        accountId: clientId,
+        framework: 'positioning_map',
+        scope: 'market_wide',
+        periodStart: new Date(),
+        periodEnd: new Date(),
+        payload: parsedData,
+        narrative: "Mapa de posicionamiento generado estratégicamente frente a competidores conocidos."
+      }
     });
+
+    // Como extra, crearemos los competidores en la tabla Competitor si no existen (simplificado)
+    if (parsedData.posiciones && parsedData.posiciones.length > 0) {
+      for (const pos of parsedData.posiciones) {
+        if (pos.empresa !== client.name && pos.empresa !== 'El Cliente') {
+          await prisma.competitor.upsert({
+            where: { id: '00000000-0000-0000-0000-000000000000' }, // Solo de referencia, vamos a buscar mejor
+            create: {
+              accountId: clientId,
+              name: pos.empresa,
+              source: 'discovered_google_search',
+              status: 'active'
+            },
+            update: {}
+          }).catch(() => {
+             // Ignorar error de upsert y crear directo:
+             prisma.competitor.create({
+               data: {
+                 accountId: clientId,
+                 name: pos.empresa,
+                 source: 'user_provided',
+                 status: 'active'
+               }
+             }).catch(e => console.error("Competidor ya existe"));
+          });
+        }
+      }
+    }
 
     revalidatePath(`/clients/${clientId}/competitors`);
     return { success: true };
@@ -252,22 +327,69 @@ export async function generateMarketIntelligence(clientId: string) {
     if (!client) return { success: false, error: "Cliente no encontrado" };
 
     const prompt = `Actúa como Analista de Mercado.
-Industria: ${client.industry}
+Industria: ${client.industry || "No especificada"}
+Competidores: ${client.knownCompetitors || "Ninguno"}
 
-Calcula métricas de mercado. Devuelve un JSON VÁLIDO:
+Calcula métricas de mercado (Share of Voice y Momentum).
+Devuelve un JSON ESTRICTO con esta estructura exacta y NADA MÁS. Asegúrate de cerrar bien las llaves y corchetes:
+
 {
-  "trends": ["Tendencia al alza en X", "Pico estacional en Y"],
-  "marketSize": {"tam": "Tamaño Total", "sam": "Mercado Servible", "som": "Mercado Obtenible"},
-  "porter": ["Poder de clientes: Alto", "Riesgo de sustitutos: Medio"]
-}`;
+  "sov": {
+     "scores_por_competidor": { "El Cliente": 30, "Competidor 1": 70 },
+     "desglose_por_canal": {},
+     "narrativa": "Análisis del SOV..."
+  },
+  "momentum": {
+     "score": 85,
+     "desglose": { "vacantes": 10, "ads": 5, "pricing": 0, "prensa": 2 },
+     "sugerencia": "Qué debería hacer el cliente para acelerar"
+  }
+}
+
+IMPORTANTE: Responde ÚNICAMENTE con el objeto JSON válido. No uses bloques de código (ni \`\`\`json).`;
 
     let jsonString = await generateInsights(prompt, false);
-    jsonString = jsonString.replace(/```json/g, '').replace(/```/g, '').trim();
+    
+    // Limpieza agresiva
+    let cleanJson = jsonString.replace(/```json/gi, "").replace(/```/g, "").trim();
+    if (cleanJson.startsWith("`")) cleanJson = cleanJson.substring(1);
+    if (cleanJson.endsWith("`")) cleanJson = cleanJson.substring(0, cleanJson.length - 1);
 
-    await prisma.account.update({
-      where: { id: clientId },
-      data: { marketAnalysis: jsonString }
-    });
+    let parsedData;
+    try {
+      parsedData = JSON.parse(cleanJson);
+    } catch (e) {
+      console.error("Error parseando JSON de Market:", cleanJson);
+      return { success: false, error: "La IA no devolvió un JSON válido. Reintenta." };
+    }
+
+    if (parsedData.sov) {
+      await prisma.insight.create({
+        data: {
+          accountId: clientId,
+          framework: 'sov_composite',
+          scope: 'market_wide',
+          periodStart: new Date(),
+          periodEnd: new Date(),
+          payload: parsedData.sov,
+          narrative: parsedData.sov.narrativa || "Análisis SOV completado."
+        }
+      });
+    }
+
+    if (parsedData.momentum) {
+      await prisma.insight.create({
+        data: {
+          accountId: clientId,
+          framework: 'momentum_score',
+          scope: 'own_company',
+          periodStart: new Date(),
+          periodEnd: new Date(),
+          payload: parsedData.momentum,
+          narrative: "Momentum score calculado."
+        }
+      });
+    }
 
     revalidatePath(`/clients/${clientId}/market`);
     return { success: true };
